@@ -1,90 +1,45 @@
-{
- "cells": [
-  {
-   "cell_type": "code",
-   "execution_count": None,
-   "id": "c6a59034-38ff-49c4-95d7-89e96f6b2ebb",
-   "metadata": {},
-   "outputs": [],
-   "source": [
-    "# dashboard.py\n",
-    "\n",
-    "import streamlit as st\n",
-    "import pandas as pd\n",
-    "import matplotlib.pyplot as plt\n",
-    "import seaborn as sns\n",
-    "import pydeck as pdk\n",
-    "\n",
-    "# Load data\n",
-    "df = pd.read_csv(\"group4cleaneddata.csv\", parse_dates=['booking_datetime'])\n",
-    "\n",
-    "st.title(\"Hotel Booking Dashboard (Group 4)\")\n",
-    "\n",
-    "# Filter only relevant target classes\n",
-    "filtered_df = df[df['target_class'].isin(['Cancelled', 'NoShow', 'Completed'])]\n",
-    "\n",
-    "# 1. Graph: Customers by loyalty_points\n",
-    "st.subheader(\"Customers by Loyalty Points\")\n",
-    "fig1, ax1 = plt.subplots()\n",
-    "sns.histplot(filtered_df['loyalty_points'], kde=True, bins=30, ax=ax1)\n",
-    "st.pyplot(fig1)\n",
-    "\n",
-    "# 2. Heatmap: target_class vs loyalty_points\n",
-    "st.subheader(\"Heatmap: Target Class vs Loyalty Points\")\n",
-    "fig2, ax2 = plt.subplots()\n",
-    "sns.boxplot(data=filtered_df, x='target_class', y='loyalty_points', ax=ax2)\n",
-    "st.pyplot(fig2)\n",
-    "\n",
-    "# 3. Graph: Cancelled/NoShow over time\n",
-    "st.subheader(\"Cancelled / NoShow Over Time\")\n",
-    "df['booking_date'] = pd.to_datetime(df['booking_datetime']).dt.date\n",
-    "cancel_data = df[df['target_class'].isin(['Cancelled', 'NoShow'])]\n",
-    "cancel_summary = cancel_data.groupby(['booking_date', 'target_class']).size().unstack(fill_value=0)\n",
-    "st.line_chart(cancel_summary)\n",
-    "\n",
-    "# 4. Map: Cancelled or NoShow by Country\n",
-    "st.subheader(\"Map of Cancelled / NoShow Bookings by Country\")\n",
-    "\n",
-    "# Mock lat/lon dictionary for countries (you can extend as needed)\n",
-    "country_coords = {\n",
-    "    'US': [37.0902, -95.7129],\n",
-    "    'CA': [56.1304, -106.3468],\n",
-    "    'DE': [51.1657, 10.4515],\n",
-    "    'JP': [36.2048, 138.2529],\n",
-    "    'ZA': [-30.5595, 22.9375],\n",
-    "    'IN': [20.5937, 78.9629],\n",
-    "    'FR': [46.6034, 1.8883],\n",
-    "    'UK': [55.3781, -3.4360],\n",
-    "    'AU': [-25.2744, 133.7751]\n",
-    "}\n",
-    "\n",
-    "map_data = cancel_data['country_code'].value_counts().rename_axis('country_code').reset_index(name='count')\n",
-    "map_data[['lat', 'lon']] = map_data['country_code'].apply(lambda x: pd.Series(country_coords.get(x, [None, None])))\n",
-    "map_data = map_data.dropna()\n",
-    "\n",
-    "st.map(map_data[['lat', 'lon']])\n"
-   ]
-  }
- ],
- "metadata": {
-  "kernelspec": {
-   "display_name": "Python [conda env:base] *",
-   "language": "python",
-   "name": "conda-base-py"
-  },
-  "language_info": {
-   "codemirror_mode": {
-    "name": "ipython",
-    "version": 3
-   },
-   "file_extension": ".py",
-   "mimetype": "text/x-python",
-   "name": "python",
-   "nbconvert_exporter": "python",
-   "pygments_lexer": "ipython3",
-   "version": "3.12.7"
-  }
- },
- "nbformat": 4,
- "nbformat_minor": 5
-}
+import streamlit as st
+import pandas as pd
+import numpy as np
+import plotly.express as px
+
+# Load data
+df = pd.read_csv("group4cleaneddata.csv", parse_dates=['booking_datetime'])
+
+st.title("ADTA5410 Team 4 Dashboard")
+st.write("Welcome to Team 4's Dashboard.")
+
+# --- Interactive Histogram ---
+st.subheader("Distribution of Stay Nights")
+bins = st.slider("Select number of bins for histogram", min_value=5, max_value=50, value=20)
+fig_hist = px.histogram(df, x='stay_nights', nbins=bins, marginal='rug', title='Stay Nights Distribution')
+st.plotly_chart(fig_hist)
+
+# --- Interactive Box Plot ---
+st.subheader("Market Segment vs. Average Daily Rate")
+selected_markets = st.multiselect("Filter market segments", options=df['market_segment'].unique(), default=df['market_segment'].unique())
+filtered_df = df[df['market_segment'].isin(selected_markets)]
+fig_box = px.box(filtered_df, x='market_segment', y='avg_daily_rate', title='Boxplot of Market Segment vs. Avg Daily Rate')
+st.plotly_chart(fig_box)
+
+# --- Interactive Pairplot Equivalent ---
+st.subheader("Scatter Matrix of Key Metrics")
+fig_matrix = px.scatter_matrix(
+    df,
+    dimensions=['target_value', 'stay_nights', 'lead_time_days', 'avg_daily_rate'],
+    title="Scatter Matrix of Booking Features",
+    height=700
+)
+st.plotly_chart(fig_matrix)
+
+# --- Correlation Heatmap ---
+st.subheader("Correlation Matrix")
+corr = df.corr(numeric_only=True)
+fig_heatmap = px.imshow(
+    corr,
+    text_auto=".2f",
+    color_continuous_scale='RdBu_r',
+    title="Correlation Matrix",
+    aspect="auto"
+)
+st.plotly_chart(fig_heatmap)
